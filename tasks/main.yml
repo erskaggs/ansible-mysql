@@ -1,0 +1,43 @@
+---
+# tasks file for mysql
+
+- name: Install MySQL
+  yum: name={{ item }} state=installed
+  with_items: mysql_packages
+
+- name: copy my.cnf global config
+  template: src=my.cnf.j2 dest={{ mysql_conf_file }}  owner=root group=root mode=644
+
+- name: ensure MySQL is started and enabled on boot
+  service: name={{ mysql_daemon }} state=started enabled=yes
+
+- name: get list of hosts for mysql root user
+  command: mysql -NBe 'SELECT Host FROM mysql.user WHERE User = "root" ORDER BY (Host="localhost") ASC'
+  register: mysql_root_hosts
+
+- name: update mysql root password
+  shell: >
+    mysql -u root -NBe 'SET PASSWORD FOR "{{mysql_root_username }}"@"{{ item }}" = PASSWORD("{{ mysql_root_password }}");'
+  with_items: mysql_root_hosts.stdout_lines
+  
+- name: copy .my.cnf to mysql user root
+  template: >
+    src="user-my.cnf.j2"
+    dest="{{ mysql_user_home }}/.my.cnf"
+    owner=root 
+    group=root 
+    mode=0600
+
+- name: Get list of hosts for the anonymous user.
+  command: mysql -NBe 'SELECT Host FROM mysql.user WHERE User = ""'
+  register: mysql_anonymous_hosts
+
+- name: Remove anonymous MySQL users.
+  mysql_user:
+    name=""
+    host="{{ item }}"
+    state=absent
+  with_items: mysql_anonymous_hosts.stdout_lines
+
+- name: remove mysql test db
+  mysql_db: name=test state=absent
