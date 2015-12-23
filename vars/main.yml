@@ -2,7 +2,7 @@
 # vars file for mysql
 mysql_daemon: mariadb
 mysql_packages:
-  - mysql
-  - mysql-server
+  - mariadb
+  - mariadb-server
   - MySQL-python
   - libselinux-python

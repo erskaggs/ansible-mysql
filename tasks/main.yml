@@ -1,6 +1,5 @@
 ---
 # tasks file for mysql
-
 - name: Install MySQL
   yum: name={{ item }} state=installed
   with_items: mysql_packages
@@ -11,15 +10,8 @@
 - name: ensure MySQL is started and enabled on boot
   service: name={{ mysql_daemon }} state=started enabled=yes
 
-- name: get list of hosts for mysql root user
-  command: mysql -NBe 'SELECT Host FROM mysql.user WHERE User = "root" ORDER BY (Host="localhost") ASC'
-  register: mysql_root_hosts
+- include: initialize_root.yml
 
-- name: update mysql root password
-  shell: >
-    mysql -u root -NBe 'SET PASSWORD FOR "{{mysql_root_username }}"@"{{ item }}" = PASSWORD("{{ mysql_root_password }}");'
-  with_items: mysql_root_hosts.stdout_lines
-  
 - name: copy .my.cnf to mysql user root
   template: >
     src="user-my.cnf.j2"

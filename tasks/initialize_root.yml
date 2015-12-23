@@ -1,0 +1,27 @@
+---
+- name: stop server temporarily to set initial password
+  service:
+       name: "{{ mysql_daemon }}"
+       state: stopped
+
+- name: ensure mysqld_safe is stopped
+  shell: mysqladmin shutdown -u root -p'{{ mysql_root_password }}' || mysqladmin shutdown -u root
+  failed_when: FALSE
+
+- name: start mysqld_safe without grants
+  shell: mysqld_safe --skip-grant-tables --skip-networking --pid-file="{{ mysql_pid_file }}" &
+
+- name: wait for mysqld_safe
+  wait_for: path="{{ mysql_pid_file }}" delay=5
+
+- name: set initial root password
+  command: mysql -u root -e "update mysql.user set password=PASSWORD('{{ mysql_root_password }}') where User = 'root'"
+
+- name: flush privileges for root password
+  command: mysql -u root -e "flush privileges"
+
+- name: stop mysqld_safe
+  command: mysqladmin shutdown -u root -p'{{ mysql_root_password }}'
+
+- name: start MariaDB server again
+  service: name="{{ mysql_daemon }}" state=started
